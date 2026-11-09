@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水墨成語接龍 - 古風書法對戰</title>
+    <!-- 引入 Tailwind CSS 進行基礎樣式快速佈局 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 圖示庫 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 Google Fonts 中文字型 (Ma Shan Zheng 行書與 Noto Serif TC) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@400;600;900&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===== 全局與古典主題設定 ===== */
+        :root {
+            --bg-paper: #f4eedb; /* 仿古宣紙底色 */
+            --ink-black: #1a1918; /* 濃墨色 */
+            --ink-gray: #4a4947;  /* 淡墨色 */
+            --stamp-red: #9e2a2b; /* 朱砂印章紅 */
+            --gold-accent: #c69214; /* 泥金邊框色 */
+        }
+
+        body {
+            font-family: 'Noto Serif TC', serif;
+            background-color: var(--bg-paper);
+            color: var(--ink-black);
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* 書法專用字型 */
+        .font-calligraphy {
+            font-family: 'Ma Shan Zheng', cursive, serif;
+        }
+
+        /* 宣紙紋理背景模擬 */
+        .paper-texture {
+            background-color: #f4eedb;
+            background-image: radial-gradient(#e2d7be 1px, transparent 1px), radial-gradient(#e2d7be 1px, #f4eedb 1px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+        }
+
+        /* ===== 水墨背景 Canvas 樣式 ===== */
+        #ink-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* 讓點擊穿透 Canvas */
+            z-index: 0;
+        }
+
+        /* ===== 朱砂印章風格 ===== */
+        .stamp {
+            display: inline-block;
+            border: 3px solid var(--stamp-red);
+            color: var(--stamp-red);
+            font-family: 'Ma Shan Zheng', cursive;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            transform: rotate(-3deg);
+            box-shadow: 0 0 2px rgba(158, 42, 43, 0.3);
+            user-select: none;
+        }
+
+        /* ===== 水墨按鈕樣式 ===== */
+        .btn-ink {
+            background: linear-gradient(135deg, #2c2a29 0%, #1a1918 100%);
+            color: #f4eedb;
+            border: 1px solid var(--gold-accent);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-ink:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, #3d3a38 0%, #2c2a29 100%);
+        }
+
+        .btn-ink:active {
+            transform: translateY(0);
+        }
+
+        .btn-stamp {
+            background-color: var(--stamp-red);
+            color: #f4eedb;
+            border: 1px solid #7a1f20;
+            transition: all 0.3s ease;
+        }
+
+        .btn-stamp:hover {
+            background-color: #b83234;
+            transform: translateY(-2px);
+        }
+
+        /* ===== 古風卡片容器 ===== */
+        .ancient-card {
+            background: rgba(248, 244, 233, 0.85);
+            border: 2px solid #d4c5a9;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(4px);
+            position: relative;
+        }
+
+        /* 四角古典邊框裝飾 */
+        .ancient-card::before, .ancient-card::after {
+            content: "";
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--gold-accent);
+        }
+        .ancient-card::before { top: 4px; left: 4px; border-right: none; border-bottom: none; }
+        .ancient-card::after { bottom: 4px; right: 4px; border-left: none; border-top: none; }
+
+        /* ===== 卷軸與成語氣泡動畫 ===== */
+        .idiom-card {
+            animation: fadeInInk 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes fadeInInk {
+            0% {
+                opacity: 0;
+                transform: scale(0.9) translateY(10px);
+                filter: blur(4px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+                filter: blur(0);
+            }
+        }
+
+        /* 自訂滾動條 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2d7be;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8c7b6c;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5c4f43;
+        }
+    </style>
+</head>
+<body class="paper-texture min-h-screen flex flex-col justify-between">
+
+    <!-- 水墨動態背景 Canvas -->
+    <canvas id="ink-canvas"></canvas>
+
+    <!-- 主容器 -->
+    <div class="relative z-10 max-w-4xl mx-auto px-4 py-6 w-full flex-grow flex flex-col justify-between">
+
+        <!-- 頂部頁眉與標題 -->
+        <header class="text-center mb-6">
+            <div class="flex justify-center items-center gap-3 mb-2">
+                <span class="stamp text-xl">翰墨</span>
+                <h1 class="text-4xl sm:text-5xl font-bold font-calligraphy tracking-widest text-stone-900">
+                    水墨成語接龍
+                </h1>
+                <span class="stamp text-xl">流芳</span>
+            </div>
+            <p class="text-stone-600 text-sm sm:text-base tracking-widest">以詞會友 ‧ 龍飛鳳舞 ‧ 墨香典雅</p>
+        </header>
+
+        <!-- 遊戲控制儀表板 (模式選單與分數顯示) -->
+        <div class="ancient-card rounded-lg p-4 mb-6">
+            <div class="flex flex-wrap justify-between items-center gap-4">
+                <!-- 遊戲模式選擇 -->
+                <div class="flex items-center space-x-2">
+                    <label for="mode-select" class="font-bold text-stone-700">模式：</label>
+                    <select id="mode-select" class="bg-amber-50 border border-amber-800/30 rounded px-3 py-1 font-semibold text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-700">
+                        <option value="pvc">人機對戰模式</option>
+                        <option value="solo">單人連擊模式</option>
+                    </select>
+                </div>
+
+                <!-- 計分與統計資訊 -->
+                <div class="flex items-center space-x-6 text-stone-800">
+                    <div class="text-center">
+                        <span class="text-xs text-stone-500 block">當前回合</span>
+                        <span id="turn-display" class="font-bold text-lg text-amber-900">玩家回合</span>
+                    </div>
+                    <div class="text-center">
+                        <span class="text-xs text-stone-500 block">接龍總數</span>
+                        <span id="score-display" class="font-bold text-xl text-red-800">0</span>
+                    </div>
+                </div>
+
+                <!-- 功能按鈕區 -->
+                <div class="flex space-x-2">
+                    <button id="btn-restart" class="btn-ink px-3 py-1.5 rounded text-sm flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-right"></i> 重開局
+                    </button>
+                    <button id="btn-hint" class="btn-stamp px-3 py-1.5 rounded text-sm flex items-center gap-1">
+                        <i class="fa-regular fa-lightbulb"></i> 錦囊 (提示)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 遊戲主要區域 (接龍鏈顯示) -->
+        <main class="flex-grow flex flex-col justify-end mb-6">
+            <!-- 成語歷史滾動列表區 -->
+            <div class="ancient-card rounded-lg p-4 h-80 sm:h-96 overflow-y-auto mb-4 flex flex-col-reverse" id="chain-container">
+                <!-- 成語對話卡片會透過 JS 動態插入這裡 (倒序顯示最新成語在底部) -->
+                <div id="chain-list" class="flex flex-col space-y-4"></div>
+            </div>
+
+            <!-- 成語釋義顯示卡片 (點擊成語或最新成語時更新) -->
+            <div id="explanation-box" class="ancient-card rounded-lg p-3 bg-amber-50/90 text-stone-800 border-l-4 border-l-amber-800 text-sm hidden">
+                <div class="font-bold text-amber-900 mb-1 flex items-center justify-between">
+                    <span id="exp-word" class="text-base font-calligraphy text-xl"></span>
+                    <span id="exp-pinyin" class="text-xs text-stone-500 font-normal"></span>
+                </div>
+                <p id="exp-meaning" class="text-stone-700 leading-relaxed"></p>
+            </div>
+        </main>
+
+        <!-- 玩家輸入控制區 -->
+        <footer class="ancient-card rounded-lg p-4">
+            <form id="idiom-form" class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-grow">
+                    <input type="text" id="idiom-input" maxlength="4" placeholder="請輸入四字成語..." 
+                           class="w-full bg-amber-50/80 border-2 border-stone-400 rounded-lg px-4 py-3 text-lg font-bold tracking-widest text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-800 focus:ring-1 focus:ring-amber-800 transition">
+                    <div id="target-char-badge" class="absolute right-3 top-1/2 -translate-y-1/2 bg-red-800 text-amber-100 text-xs px-2 py-1 rounded font-bold hidden">
+                        首字須為：<span id="required-char" class="text-sm"></span>
+                    </div>
+                </div>
+                <button type="submit" id="btn-submit" class="btn-ink px-8 py-3 rounded-lg text-lg font-bold tracking-wider flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-pen-nib"></i> 落筆接龍
+                </button>
+            </form>
+            <!-- 錯誤/提示訊息顯示區 -->
+            <div id="message-toast" class="mt-2 text-center text-sm font-semibold text-red-700 min-h-[20px]"></div>
+        </footer>
+
+    </div>
+
+    <!-- JavaScript 遊戲邏輯與水墨動畫特效 -->
+    <script>
+        /**
+         * 1. 常用四字成語數據庫 (含有注音與詳細釋義)
+         * 包含豐富的經典成語以保證良好的接龍體驗
+         */
+        const IDIOM_DATABASE = [
+            { word: "胸有成竹", pinyin: "xiōng yǒu chéng zhú", meaning: "比喻做事之前已經有通盤的考慮與準備。" },
+            { word: "竹報平安", pinyin: "zhú bào píng ān", meaning: "比喻平安家信，或指報平安的喜訊。" },
+            { word: "安居樂業", pinyin: "ān jū lè yè", meaning: "生活安定，工作愉快。" },
+            { word: "業精於勤", pinyin: "yè jīng yú qín", meaning: "學業或事業的精進在於勤奮。" },
+            { word: "勤能補拙", pinyin: "qín néng bǔ zhuō", meaning: "勤奮能夠彌補資質的聰穎不足。" },
+            { word: "拙貝羅香", pinyin: "zhuō bèi luó xiāng", meaning: "形容特有的香氣。" },
+            { word: "水到渠成", pinyin: "shuǐ dào qú chéng", meaning: "水流到的地方自然成渠。比喻條件成熟，事情自然成功。" },
+            { word: "成群結隊", pinyin: "chéng qún jié duì", meaning: "許多人或動物聚集成群組。" },
+            { word: "隊伍整齊", pinyin: "duì wǔ zhěng qí", meaning: "陣容排列十分規律齊整。" },
+            { word: "齊心協力", pinyin: "qí xīn xié lì", meaning: "思想一致，共同努力。" },
+            { word: "力挽狂瀾", pinyin: "lì wǎn kuáng lán", meaning: "比喻盡力挽回險惡的局勢。" },
+            { word: "瀾倒波隨", pinyin: "lán dào bō suí", meaning: "比喻隨波逐流，沒有主見。" },
+            { word: "隨遇而安", pinyin: "suí yù ér ān", meaning: "能適應各種環境，在任何境遇中都能滿足。" },
+            { word: "安貧樂道", pinyin: "ān pín lè dào", meaning: "安於貧困的環境，仍然堅持道德追求。" },
+            { word: "道聽途說", pinyin: "dào tīng tú shuō", meaning: "在路上聽來的傳聞。指傳播沒有根據的消息。" },
+            { word: "說長道短", pinyin: "shuō cháng dào duǎn", meaning: "議論別人的好壞是非。" },
+            { word: "短小精悍", pinyin: "duǎn xiǎo jīng hàn", meaning: "形容人身材矮小卻精明強幹；或文章簡短有力。" },
+            { word: "悍然不顧", pinyin: "hàn rán bù gù", meaning: "形容蠻橫無理，不顧一切。" },
+            { word: "顧全大局", pinyin: "gù quán dà jú", meaning: "顧及總體與全局利益，不計較個人得失。" },
+            { word: "局促不安", pinyin: "jú cù bù ān", meaning: "形容舉止拘束，心中不安。" },
+            { word: "安然無恙", pinyin: "ān rán wú yàng", meaning: "平安無事，沒有遭受損害或疾病。" },
+            { word: "恙消福至", pinyin: "yàng xiāo fú zhì", meaning: "災禍病痛消退，福氣隨之而來。" },
+            { word: "至理名言", pinyin: "zhì lǐ míng yán", meaning: "最真實正確、極有價值的教誨與言論。" },
+            { word: "言行一致", pinyin: "yán xíng yī zhì", meaning: "說話與行動完全符合。" },
+            { word: "致富思源", pinyin: "zhì fù sī yuán", meaning: "發財致富後不忘本源與社會責任。" },
+            { word: "源遠流長", pinyin: "yuán yuǎn liú cháng", meaning: "源頭很遠，水流很長。比喻歷史悠久，根底深厚。" },
+            { word: "長驅直入", pinyin: "cháng qū zhí rù", meaning: "長距離挺進，毫無阻礙地深入敵方。" },
+            { word: "入木三分", pinyin: "rù mù sān fēn", meaning: "形容書法筆力雄厚，或形容分析問題深刻透徹。" },
+            { word: "分秒必爭", pinyin: "fēn miǎo bì zhēng", meaning: "連一分一秒時間都要爭取。形容抓緊時間。" },
+            { word: "爭先恐後", pinyin: "zhēng xiān kǒng hòu", meaning: "爭著向前，唯恐落後。" },
+            { word: "後生可畏", pinyin: "hòu shēng kě wèi", meaning: "青年人有無限發展潛力，令人敬畏。" },
+            { word: "畏首畏尾", pinyin: "wèi shǒu wèi wěi", meaning: "前怕顧頭，後怕顧尾。形容顧慮重重，不敢果斷行動。" },
+            { word: "尾大不掉", pinyin: "wěi dà bù diào", meaning: "機構或下屬過於龐大，難以指揮指揮調動。" },
+            { word: "掉以輕心", pinyin: "diào yǐ qīng xīn", meaning: "對事情採取輕率粗心的態度，不予重視。" },
+            { word: "心曠神怡", pinyin: "xīn kuàng shén yí", meaning: "心胸開闊，精神愉快。" },
+            { word: "怡然自得", pinyin: "yí rán zì dé", meaning: "形容高興而自足的樣子。" },
+            { word: "得心應手", pinyin: "dé xīn yìng shǒu", meaning: "心裡怎麼想，手就能怎麼做。形容技藝純熟。" },
+            { word: "手到擒來", pinyin: "shǒu dào qín lái", meaning: "手一伸過去就把敵人擒住。比喻辦事輕而易舉。" },
+            { word: "來日方長", pinyin: "lái rì fāng cháng", meaning: "未來的日子還很長，比喻時間還多。" },
+            { word: "長治久安", pinyin: "cháng zhì jiǔ ān", meaning: "國家長期社會安定、長治久遠。" },
+            { word: "安然自若", pinyin: "ān rán zì ruò", meaning: "神態安詳平靜，如常一樣。" },
+            { word: "若即若離", pinyin: "ruò jí ruò lí", meaning: "好像親近，又好像疏遠。形容關係模糊。" },
+            { word: "離鄉背井", pinyin: "lí xiāng bèi jǐng", meaning: "離開故鄉，遠走他鄉生活。" },
+            { word: "井井有條", pinyin: "jǐng jǐng yǒu tiáo", meaning: "條理分明，整整齊齊。" },
+            { word: "條分縷析", pinyin: "tiáo fēn lǚ xī", meaning: "分析得非常極其有條理細緻。" },
+            { word: "析微察異", pinyin: "xī wēi chá yì", meaning: "能細緻觀察微小的差異。" },
+            { word: "異想天開", pinyin: "yì xiǎng tiān kāi", meaning: "想法離奇誇張，不切實際。" },
+            { word: "開門見山", pinyin: "kāi mén jiàn shān", meaning: "比喻說話或寫文章直截了當，開頭就點明主題。" },
+            { word: "山清水秀", pinyin: "shān qīng shuǐ xiù", meaning: "風景優美，山水如畫。" },
+            { word: "秀外慧中", pinyin: "xiù wài huì zhōng", meaning: "外貌秀麗，內心聰慧。" }
+        ];
+
+        /**
+         * 2. 遊戲狀態管理
+         */
+        const gameState = {
+            mode: 'pvc',            // 'pvc': 人機對戰, 'solo': 單人連擊
+            currentTurn: 'player',  // 'player': 玩家, 'computer': 電腦
+            history: [],            // 目前已使用的成語列表
+            score: 0,               // 當前接龍分數/次數
+            isGameOver: false       // 遊戲是否結束
+        };
+
+        // DOM 元素引用
+        const chainContainer = document.getElementById('chain-container');
+        const chainList = document.getElementById('chain-list');
+        const idiomForm = document.getElementById('idiom-form');
+        const idiomInput = document.getElementById('idiom-input');
+        const modeSelect = document.getElementById('mode-select');
+        const turnDisplay = document.getElementById('turn-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const messageToast = document.getElementById('message-toast');
+        const btnRestart = document.getElementById('btn-restart');
+        const btnHint = document.getElementById('btn-hint');
+        const targetCharBadge = document.getElementById('target-char-badge');
+        const requiredCharSpan = document.getElementById('required-char');
+        const expBox = document.getElementById('explanation-box');
+        const expWord = document.getElementById('exp-word');
+        const expPinyin = document.getElementById('exp-pinyin');
+        const expMeaning = document.getElementById('exp-meaning');
+
+        /**
+         * 3. 初始化遊戲
+         */
+        function initGame() {
+            gameState.history = [];
+            gameState.score = 0;
+            gameState.isGameOver = false;
+            gameState.currentTurn = 'player';
+            
+            chainList.innerHTML = '';
+            scoreDisplay.textContent = '0';
+            turnDisplay.textContent = '玩家落筆';
+            turnDisplay.className = 'font-bold text-lg text-amber-900';
+            messageToast.textContent = '';
+            targetCharBadge.classList.add('hidden');
+            expBox.classList.add('hidden');
+
+            // 隨機選一個初始成語作為開局
+            const randomStartIndex = Math.floor(Math.random() * IDIOM_DATABASE.length);
+            const startIdiom = IDIOM_DATABASE[randomStartIndex];
+            
+            addIdiomToChain(startIdiom.word, 'system', '開局成語');
+            updateRequiredChar();
+        }
+
+        /**
+         * 4. 更新接龍規則要求的首字提示
+         */
+        function updateRequiredChar() {
+            if (gameState.history.length === 0) return;
+            
+            const lastIdiom = gameState.history[gameState.history.length - 1];
+            const requiredChar = lastIdiom.charAt(lastIdiom.length - 1);
+            
+            requiredCharSpan.textContent = requiredChar;
+            targetCharBadge.classList.remove('hidden');
+        }
+
+        /**
+         * 5. 顯示訊息提示
+         */
+        function showMessage(msg, isError = true) {
+            messageToast.textContent = msg;
+            messageToast.className = `mt-2 text-center text-sm font-semibold ${isError ? 'text-red-700' : 'text-emerald-800'}`;
+            setTimeout(() => {
+                if (messageToast.textContent === msg) {
+                    messageToast.textContent = '';
+                }
+            }, 3000);
+        }
+
+        /**
+         * 6. 將成語新增至 UI 列表與歷史記錄
+         */
+        function addIdiomToChain(word, author, note = '') {
+            gameState.history.push(word);
+            
+            // 尋找成語詳細資訊
+            const idiomData = IDIOM_DATABASE.find(item => item.word === word) || {
+                word: word,
+                pinyin: '',
+                meaning: '暫無詳細釋義'
+            };
+
+            // 建立成語卡片 DOM
+            const card = document.createElement('div');
+            card.className = 'idiom-card flex flex-col p-3 rounded-lg border bg-amber-50/70 border-stone-300 shadow-sm transition hover:shadow-md cursor-pointer';
+            
+            let authorBadge = '';
+            if (author === 'player') {
+                authorBadge = '<span class="stamp text-xs bg-amber-100">玩家</span>';
+            } else if (author === 'computer') {
+                authorBadge = '<span class="stamp text-xs border-stone-800 text-stone-800">電腦</span>';
+            } else {
+                authorBadge = '<span class="stamp text-xs border-amber-700 text-amber-700">起手</span>';
+            }
+
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-1">
+                    <div class="flex items-center gap-2">
+                        ${authorBadge}
+                        <span class="text-xs text-stone-500 font-serif">${idiomData.pinyin}</span>
+                    </div>
+                    <span class="text-xs text-stone-400">#${gameState.history.length}</span>
+                </div>
+                <div class="text-2xl font-bold font-calligraphy tracking-widest text-stone-900">${word}</div>
+            `;
+
+            // 點擊卡片顯示釋義
+            card.addEventListener('click', () => {
+                displayExplanation(idiomData);
+            });
+
+            chainList.appendChild(card);
+            
+            // 自動滾動到底部
+            chainContainer.scrollTop = chainContainer.scrollHeight;
+
+            // 更新分數與釋義
+            gameState.score = gameState.history.length - 1;
+            scoreDisplay.textContent = gameState.score;
+            displayExplanation(idiomData);
+
+            // 產生墨滴特效
+            createInkSplash();
+        }
+
+        /**
+         * 7. 顯示釋義說明區塊
+         */
+        function displayExplanation(data) {
+            expWord.textContent = data.word;
+            expPinyin.textContent = data.pinyin ? `[ ${data.pinyin} ]` : '';
+            expMeaning.textContent = data.meaning;
+            expBox.classList.remove('hidden');
+        }
+
+        /**
+         * 8. 驗證玩家輸入的成語
+         */
+        function validateInput(inputWord) {
+            // 檢查長度
+            if (!inputWord || inputWord.length !== 4) {
+                return { valid: false, msg: "請輸入恰好四個字的四字成語！" };
+            }
+
+            // 檢查是否已在歷史記錄中
+            if (gameState.history.includes(inputWord)) {
+                return { valid: false, msg: "該成語在本局中已經使用過！" };
+            }
+
+            // 檢查首尾接龍規則
+            const lastIdiom = gameState.history[gameState.history.length - 1];
+            const requiredChar = lastIdiom.charAt(lastIdiom.length - 1);
+            if (inputWord.charAt(0) !== requiredChar) {
+                return { valid: false, msg: `首字不符合！必須以「${requiredChar}」開頭。` };
+            }
+
+            // 檢查是否為成語庫中的合法成語
+            const exists = IDIOM_DATABASE.some(item => item.word === inputWord);
+            if (!exists) {
+                return { valid: false, msg: "成語庫中未收錄此成語，請嘗試其他詞彙。" };
+            }
+
+            return { valid: true };
+        }
+
+        /**
+         * 9. 處理玩家提交成語
+         */
+        function handlePlayerSubmit(e) {
+            e.preventDefault();
+            if (gameState.isGameOver) return;
+            if (gameState.mode === 'pvc' && gameState.currentTurn !== 'player') return;
+
+            const inputWord = idiomInput.value.trim();
+            const validation = validateInput(inputWord);
+
+            if (!validation.valid) {
+                showMessage(validation.msg, true);
+                return;
+            }
+
+            // 玩家成功接龍
+            addIdiomToChain(inputWord, 'player');
+            idiomInput.value = '';
+            showMessage("接龍成功！", false);
+
+            // 判斷遊戲模式進行下一步
+            if (gameState.mode === 'pvc') {
+                gameState.currentTurn = 'computer';
+                turnDisplay.textContent = '電腦思考中...';
+                turnDisplay.className = 'font-bold text-lg text-stone-500 animate-pulse';
+                
+                // 模擬電腦思考時間
+                setTimeout(computerTurn, 1200);
+            } else {
+                // 單人模式：繼續由玩家接龍
+                updateRequiredChar();
+            }
+        }
+
+        /**
+         * 10. 電腦對戰回合邏輯
+         */
+        function computerTurn() {
+            if (gameState.isGameOver) return;
+
+            const lastIdiom = gameState.history[gameState.history.length - 1];
+            const requiredChar = lastIdiom.charAt(lastIdiom.length - 1);
+
+            // 在成語庫中尋找開頭為 requiredChar 且未使用的成語
+            const availableIdioms = IDIOM_DATABASE.filter(item => 
+                item.word.charAt(0) === requiredChar && !gameState.history.includes(item.word)
+            );
+
+            if (availableIdioms.length === 0) {
+                // 電腦無詞可接，玩家獲勝
+                gameState.isGameOver = true;
+                turnDisplay.textContent = '玩家大獲全勝！';
+                turnDisplay.className = 'font-bold text-lg text-emerald-800';
+                showMessage("電腦詞窮了！恭喜您獲得最終勝利！🎉", false);
+                return;
+            }
+
+            // 電腦隨機選擇一個可用成語
+            const randomIndex = Math.floor(Math.random() * availableIdioms.length);
+            const computerChoice = availableIdioms[randomIndex];
+
+            addIdiomToChain(computerChoice.word, 'computer');
+            
+            // 輪到玩家
+            gameState.currentTurn = 'player';
+            turnDisplay.textContent = '玩家落筆';
+            turnDisplay.className = 'font-bold text-lg text-amber-900';
+            updateRequiredChar();
+        }
+
+        /**
+         * 11. 錦囊/提示功能
+         */
+        function provideHint() {
+            if (gameState.isGameOver) return;
+            
+            const lastIdiom = gameState.history[gameState.history.length - 1];
+            const requiredChar = lastIdiom.charAt(lastIdiom.length - 1);
+
+            const available = IDIOM_DATABASE.filter(item => 
+                item.word.charAt(0) === requiredChar && !gameState.history.includes(item.word)
+            );
+
+            if (available.length === 0) {
+                showMessage("當前無可接成語，遊戲即將結束！", true);
+            } else {
+                const randomHint = available[Math.floor(Math.random() * available.length)];
+                showMessage(`錦囊提示：嘗試使用「${randomHint.word.charAt(0)}${randomHint.word.charAt(1)}...」`, false);
+            }
+        }
+
+        /* ===================================================
+         * 12. 動態水墨動畫效果 (HTML5 Canvas 筆墨粒子)
+         * =================================================== */
+        const canvas = document.getElementById('ink-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let particles = [];
+
+        // 調整 Canvas 尺寸
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 水墨粒子類別
+        class InkParticle {
+            constructor(x, y, radius, color, vx, vy) {
+                this.x = x || Math.random() * width;
+                this.y = y || Math.random() * height;
+                this.radius = radius || Math.random() * 20 + 5;
+                this.color = color || 'rgba(30, 29, 27, ';
+                this.alpha = Math.random() * 0.3 + 0.1;
+                this.vx = vx || (Math.random() - 0.5) * 0.5;
+                this.vy = vy || (Math.random() - 0.5) * 0.5;
+                this.maxRadius = this.radius * 1.5;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + this.alpha + ')';
+                ctx.fill();
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // 緩慢變大與淡出
+                if (this.radius < this.maxRadius) {
+                    this.radius += 0.02;
+                }
+                this.alpha -= 0.0005;
+
+                // 邊界檢查
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+        }
+
+        // 初始化墨粒子背景
+        for (let i = 0; i < 25; i++) {
+            particles.push(new InkParticle());
+        }
+
+        // 產生接龍成功時的墨點噴灑特效
+        function createInkSplash() {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            for (let i = 0; i < 15; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 1;
+                particles.push(new InkParticle(
+                    centerX, 
+                    centerY, 
+                    Math.random() * 15 + 5, 
+                    'rgba(26, 25, 24, ',
+                    Math.cos(angle) * speed, 
+                    Math.sin(angle) * speed
+                ));
+            }
+        }
+
+        // 背景動畫循環
+        function animateInk() {
+            ctx.clearRect(0, 0, width, height);
+
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw();
+                if (p.alpha <= 0) {
+                    particles.splice(index, 1);
+                    particles.push(new InkParticle()); // 補充新粒子
+                }
+            });
+
+            requestAnimationFrame(animateInk);
+        }
+        animateInk();
+
+        /* ===================================================
+         * 13. 事件監聽器綁定
+         * =================================================== */
+        idiomForm.addEventListener('submit', handlePlayerSubmit);
+        btnRestart.addEventListener('click', initGame);
+        btnHint.addEventListener('click', provideHint);
+        modeSelect.addEventListener('change', (e) => {
+            gameState.mode = e.target.value;
+            initGame();
+        });
+
+        // 頁面載入完成後啟動遊戲
+        window.onload = initGame;
+    </script>
+</body>
+</html>
